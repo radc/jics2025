@@ -1,0 +1,221 @@
+Warning: no checkpoint provided, using pretrained weights only.
+2025-06-18 19:01:46,642 - Quant - INFO - Unsupported op type Squeeze
+2025-06-18 19:01:46,643 - Quant - INFO - Unsupported op type Mean
+2025-06-18 19:01:46,643 - Quant - INFO - Unsupported op type Unsqueeze
+2025-06-18 19:01:46,643 - Quant - INFO - Unsupported op type Compress
+2025-06-18 19:01:46,643 - Quant - INFO - Unsupported op type Identity
+2025-06-18 19:01:46,643 - Quant - INFO - Unsupported op type Shape
+2025-06-18 19:01:46,643 - Quant - INFO - Unsupported op type If
+2025-06-18 19:01:46,644 - Quant - INFO - Selecting DefaultOpInstanceConfigGenerator to compute the specialized config. hw_version:None
+ScaleSpaceFlow(
+  (img_encoder): Encoder(
+    (0): Conv2d(3, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (1): ReLU(inplace=True)
+    (2): Conv2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (3): ReLU(inplace=True)
+    (4): Conv2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (5): ReLU(inplace=True)
+    (6): Conv2d(128, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+  )
+  (img_decoder): Decoder(
+    (0): ConvTranspose2d(192, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (1): ReLU(inplace=True)
+    (2): ConvTranspose2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (3): ReLU(inplace=True)
+    (4): ConvTranspose2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (5): ReLU(inplace=True)
+    (6): ConvTranspose2d(128, 3, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+  )
+  (img_hyperprior): Hyperprior(
+    (entropy_bottleneck): EntropyBottleneck(
+      (likelihood_lower_bound): LowerBound()
+      (matrices): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (4): Parameter containing: [torch.float32 of size 192x1x3 (cuda:0)]
+      )
+      (biases): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (4): Parameter containing: [torch.float32 of size 192x1x1 (cuda:0)]
+      )
+      (factors): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+      )
+    )
+    (hyper_encoder): HyperEncoder(
+      (0): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+      (1): ReLU(inplace=True)
+      (2): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+      (3): ReLU(inplace=True)
+      (4): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    )
+    (hyper_decoder_mean): HyperDecoder(
+      (0): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (3): ReLU(inplace=True)
+      (4): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    )
+    (hyper_decoder_scale): HyperDecoderWithQReLU(
+      (deconv1): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (deconv2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (deconv3): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    )
+    (gaussian_conditional): GaussianConditional(
+      (likelihood_lower_bound): LowerBound()
+      (lower_bound_scale): LowerBound()
+    )
+    (img_hyperprior_decoder_mean): InputLoggerWrapper(
+      (model): HyperDecoder(
+        (0): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+        (1): ReLU(inplace=True)
+        (2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+        (3): ReLU(inplace=True)
+        (4): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      )
+    )
+  )
+  (res_encoder): Encoder(
+    (0): Conv2d(3, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (1): ReLU(inplace=True)
+    (2): Conv2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (3): ReLU(inplace=True)
+    (4): Conv2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (5): ReLU(inplace=True)
+    (6): Conv2d(128, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+  )
+  (res_decoder): Decoder(
+    (0): ConvTranspose2d(384, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (1): ReLU(inplace=True)
+    (2): ConvTranspose2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (3): ReLU(inplace=True)
+    (4): ConvTranspose2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (5): ReLU(inplace=True)
+    (6): ConvTranspose2d(128, 3, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+  )
+  (res_hyperprior): Hyperprior(
+    (entropy_bottleneck): EntropyBottleneck(
+      (likelihood_lower_bound): LowerBound()
+      (matrices): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (4): Parameter containing: [torch.float32 of size 192x1x3 (cuda:0)]
+      )
+      (biases): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (4): Parameter containing: [torch.float32 of size 192x1x1 (cuda:0)]
+      )
+      (factors): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+      )
+    )
+    (hyper_encoder): HyperEncoder(
+      (0): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+      (1): ReLU(inplace=True)
+      (2): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+      (3): ReLU(inplace=True)
+      (4): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    )
+    (hyper_decoder_mean): HyperDecoder(
+      (0): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (3): ReLU(inplace=True)
+      (4): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    )
+    (hyper_decoder_scale): HyperDecoderWithQReLU(
+      (deconv1): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (deconv2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (deconv3): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    )
+    (gaussian_conditional): GaussianConditional(
+      (likelihood_lower_bound): LowerBound()
+      (lower_bound_scale): LowerBound()
+    )
+  )
+  (motion_encoder): Encoder(
+    (0): Conv2d(6, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (1): ReLU(inplace=True)
+    (2): Conv2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (3): ReLU(inplace=True)
+    (4): Conv2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    (5): ReLU(inplace=True)
+    (6): Conv2d(128, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+  )
+  (motion_decoder): Decoder(
+    (0): ConvTranspose2d(192, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (1): ReLU(inplace=True)
+    (2): ConvTranspose2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (3): ReLU(inplace=True)
+    (4): ConvTranspose2d(128, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    (5): ReLU(inplace=True)
+    (6): ConvTranspose2d(128, 3, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+  )
+  (motion_hyperprior): Hyperprior(
+    (entropy_bottleneck): EntropyBottleneck(
+      (likelihood_lower_bound): LowerBound()
+      (matrices): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x3 (cuda:0)]
+          (4): Parameter containing: [torch.float32 of size 192x1x3 (cuda:0)]
+      )
+      (biases): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (4): Parameter containing: [torch.float32 of size 192x1x1 (cuda:0)]
+      )
+      (factors): ParameterList(
+          (0): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (1): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (2): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+          (3): Parameter containing: [torch.float32 of size 192x3x1 (cuda:0)]
+      )
+    )
+    (hyper_encoder): HyperEncoder(
+      (0): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+      (1): ReLU(inplace=True)
+      (2): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+      (3): ReLU(inplace=True)
+      (4): Conv2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+    )
+    (hyper_decoder_mean): HyperDecoder(
+      (0): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (3): ReLU(inplace=True)
+      (4): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    )
+    (hyper_decoder_scale): HyperDecoderWithQReLU(
+      (deconv1): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (deconv2): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+      (deconv3): ConvTranspose2d(192, 192, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), output_padding=(1, 1))
+    )
+    (gaussian_conditional): GaussianConditional(
+      (likelihood_lower_bound): LowerBound()
+      (lower_bound_scale): LowerBound()
+    )
+  )
+)
+=== Running test only ===
+[0] Test results - Loss: 0.5092, MSE: 0.00053344, BPP: 0.16235026
+Computing encodings (1/1) : img_hyperprior_decoder_mean

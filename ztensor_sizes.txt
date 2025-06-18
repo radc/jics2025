@@ -1,0 +1,25 @@
+Image Input:
+
+Image Encoder torch.Size([20, 3, 256, 256])
+
+Image Decoder torch.Size([20, 192, 16, 16])
+
+Image Hyperprior torch.Size([20, 192, 16, 16])
+
+
+Residual Input:
+
+Residual Encoder torch.Size([20, 3, 256, 256])
+
+Residual Decoder torch.Size([20, 384, 16, 16])
+
+Residual Hyperprior torch.Size([20, 192, 16, 16])
+
+
+Motion Input:
+
+Motion Encoder torch.Size([20, 6, 256, 256])
+
+Motion Decoder torch.Size([20, 192, 16, 16])
+
+Motion Hyperprior torch.Size([20, 192, 16, 16])

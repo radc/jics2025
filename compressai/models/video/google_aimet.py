@@ -45,11 +45,8 @@ from compressai.registry import register_model
 from ..base import CompressionModel
 from ..utils import conv, deconv, gaussian_blur, gaussian_kernel2d, meshgrid2d
 
-from aimet_common.defs import QuantScheme
-from aimet_common.quantsim_config.utils import get_path_for_per_channel_config, get_path_for_per_tensor_config
 from aimet_torch.quantsim import QuantizationSimModel
-from ...utils.quantization.wrapper import InputLoggerWrapper
-import os
+
 
 @register_model("ssf2020")
 class ScaleSpaceFlow(CompressionModel):
@@ -71,7 +68,6 @@ class ScaleSpaceFlow(CompressionModel):
         scale_field_shift: float = 1.0,
     ):
         super().__init__()
-
 
         class Encoder(nn.Sequential):
             def __init__(
@@ -161,12 +157,10 @@ class ScaleSpaceFlow(CompressionModel):
 
             def forward(self, y):
                 z = self.hyper_encoder(y)
-
                 z_hat, z_likelihoods = self.entropy_bottleneck(z)
 
                 scales = self.hyper_decoder_scale(z_hat)
                 means = self.hyper_decoder_mean(z_hat)
-
                 _, y_likelihoods = self.gaussian_conditional(y, scales, means)
                 y_hat = quantize_ste(y - means) + means
                 return y_hat, {"y": y_likelihoods, "z": z_likelihoods}
@@ -215,19 +209,6 @@ class ScaleSpaceFlow(CompressionModel):
         self.num_levels = num_levels
         self.scale_field_shift = scale_field_shift
 
-        #Radmann
-        #self.img_encoder_input = 0
-        #self.img_decoder_input = 0
-        #self.img_hyperprior_input = 0
-
-        #self.res_encoder_input = 0
-        #self.res_decoder_input = 0
-        #self.res_hyperprior_input = 0
-
-        #self.motion_encoder_input = 0
-        #self.motion_decoder_input = 0
-        #self.motion_hyperprior_input = 0
-
     def forward(self, frames):
         if not isinstance(frames, List):
             raise RuntimeError(f"Invalid number of frames: {len(frames)}.")
@@ -255,17 +236,6 @@ class ScaleSpaceFlow(CompressionModel):
         y = self.img_encoder(x)
         y_hat, likelihoods = self.img_hyperprior(y)
         x_hat = self.img_decoder(y_hat)
-
-        #Radmann
-        #self.img_encoder_input = x.shape
-        #self.img_hyperprior_input = y.shape
-        #self.img_decoder_input = y_hat.shape
-
-        #print("Image Input:\n")
-        #print(f"Image Encoder {self.img_encoder_input}\n")
-        #print(f"Image Decoder {self.img_decoder_input}\n")
-        #print(f"Image Hyperprior {self.img_hyperprior_input}\n")
-
         return x_hat, {"keyframe": likelihoods}
 
     def encode_keyframe(self, x):
@@ -299,26 +269,7 @@ class ScaleSpaceFlow(CompressionModel):
         # y_combine
         y_combine = torch.cat((y_res_hat, y_motion_hat), dim=1)
         x_res_hat = self.res_decoder(y_combine)
-    
-        # Radmann
-        # self.res_encoder_input = x_res.shape
-        # self.res_hyperprior_input = y_res.shape
-        # self.res_decoder_input = y_combine.shape
 
-        # self.motion_encoder_input = x.shape
-        # self.motion_hyperprior_input = y_motion.shape
-        # self.motion_decoder_input = y_motion_hat.shape
-
-        # print("\nResidual Input:\n")
-        # print(f"Residual Encoder {self.res_encoder_input}\n")
-        # print(f"Residual Decoder {self.res_decoder_input}\n")
-        # print(f"Residual Hyperprior {self.res_hyperprior_input}\n")
-
-        # print("\nMotion Input:\n")
-        # print(f"Motion Encoder {self.motion_encoder_input}\n")
-        # print(f"Motion Decoder {self.motion_decoder_input}\n")
-        # print(f"Motion Hyperprior {self.motion_hyperprior_input}\n")
-        
         # final reconstruction: prediction + residual
         x_rec = x_pred + x_res_hat
 
@@ -489,129 +440,9 @@ class ScaleSpaceFlow(CompressionModel):
         net = cls()
         net.load_state_dict(state_dict)
         return net
-    
-    
-    def aimet_set_cfg(self, encodings_path=None, weight_bw=None, activation_bw=None, quant_scheme=None):
-        
-        self.__setattr__("aimet_cfg", {
-            "weight_bw": 16,
-            "activation_bw": 16,
-            "encodings_path": "encodings",
-            "quant_scheme": QuantScheme.post_training_tf_enhanced
-        })
-        
-        if encodings_path is not None:
-            self.aimet_cfg["encodings_path"] = encodings_path
 
-        if weight_bw is not None:
-            self.aimet_cfg["weight_bw"] = weight_bw
-
-        if activation_bw is not None:
-            self.aimet_cfg["activation_bw"] = activation_bw
-
-        if quant_scheme is not None :
-            if quant_scheme == "post_training_tf" : quant_scheme_ = QuantScheme.post_training_tf
-            elif quant_scheme == "post_training_tf_enhanced" : quant_scheme_ = QuantScheme.post_training_tf_enhanced
-            elif quant_scheme == "training_range_learning_with_tf_init" : quant_scheme_ = QuantScheme.training_range_learning_with_tf_init
-            elif quant_scheme == "training_range_learning_with_tf_enhanced_init" : quant_scheme_ = QuantScheme.training_range_learning_with_tf_enhanced_init
-            elif quant_scheme == "training_range_learning" : quant_scheme_ = QuantScheme.training_range_learning
-            elif quant_scheme == "post_training_percentile" : quant_scheme_ = QuantScheme.post_training_percentile
-            else : assert(False, "Invalid Quantization Scheme")
-            self.aimet_cfg["quant_scheme"] = quant_scheme_
-
-        
-    
-    def aimet_set_modules(self, ptq_one_module=None):
-        ptq_modules = []
-        aux = [
-            {"module": self.img_encoder, "attr_name": "img_encoder", "input_size": (1, 3, 256, 256)},
-            {"module": self.img_decoder, "attr_name": "img_decoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.img_hyperprior.hyper_encoder, "attr_name": "img_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.img_hyperprior.hyper_decoder_mean, "attr_name": "img_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
-            {"module": self.img_hyperprior.hyper_decoder_scale, "attr_name": "img_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},
-
-            {"module": self.res_encoder, "attr_name": "res_encoder", "input_size": (1, 3, 256, 256)},
-            {"module": self.res_decoder, "attr_name": "res_decoder", "input_size": (1, 384, 16, 16)},
-            {"module": self.res_hyperprior.hyper_encoder, "attr_name": "res_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.res_hyperprior.hyper_decoder_mean, "attr_name": "res_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
-            {"module": self.res_hyperprior.hyper_decoder_scale, "attr_name": "res_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},
-
-            {"module": self.motion_encoder, "attr_name": "motion_encoder", "input_size": (1, 6, 256, 256)},
-            {"module": self.motion_decoder, "attr_name": "motion_decoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.motion_hyperprior.hyper_encoder, "attr_name": "motion_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.motion_hyperprior.hyper_decoder_mean, "attr_name": "motion_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
-            {"module": self.motion_hyperprior.hyper_decoder_scale, "attr_name": "motion_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},                        
-        ]
-
-        if ptq_one_module == None :      
-            ptq_modules = aux
-        else :
-            for module in aux :
-                if module["attr_name"] == ptq_one_module:
-                    ptq_modules = [module]
-                    break
-
-        self.__setattr__("ptq_modules", ptq_modules)
-
-    def aimet_quantsim(self):
-        for module in self.ptq_modules:
-            m = module["module"]
-            input_shape = module["input_size"]
-            dummy_input = torch.randn(input_shape).float().cuda()  # .half()          
-
-            # print(self.ptq_cfg["quant_scheme"])
-
-            sim = QuantizationSimModel(m,
-                                    dummy_input=dummy_input,
-                                    quant_scheme=QuantScheme.post_training_tf_enhanced,
-                                    default_param_bw=16,
-                                    default_output_bw=16,
-                                    config_file=get_path_for_per_channel_config(),
-                                    )
-
-            module["sim_module"] = sim
-
-    def aimet_insert_wrappers(self):
-        for module in self.ptq_modules:            
-            module["original_module"] = module["module"]
-            module["wrapper_module"] = InputLoggerWrapper(module["module"])            
-            
-            if ("hyperprior" in module["attr_name"] ):
-                if("img" in module["attr_name"]):                
-                    hypermodule = self.img_hyperprior                
-                elif("res" in module["attr_name"]):                
-                    hypermodule = self.res_hyperprior
-                else:                
-                    hypermodule = self.motion_hyperprior
-                hypermodule.__setattr__(module["attr_name"], module["wrapper_module"])
-            else:
-                self.__setattr__(module["attr_name"], module["wrapper_module"])
-            
-    def aimet_pass_calibration_data(self):          
-        def pass_calibration_data(model: torch.nn.Module, forward_pass_args = None):
-            data_loader = forward_pass_args    
-            model.eval()
-            with torch.no_grad():
-                for (input_data, _) in data_loader:
-                    # print(f"Calibrating {model} with input_data: {type(input_data)}")
-                    if isinstance(input_data, tuple):
-                        input_data = tuple(x.float() for x in input_data)                        
-                        model(*input_data)
-                    else:
-                        input_data = input_data.float()
-                        model(input_data)                 
-
-        for idx_module, module in enumerate(self.ptq_modules):
-            print(f"Computing encodings ({idx_module+1}/{len(self.ptq_modules)}) : {module['attr_name']}")
-            dataloader = module["wrapper_module"].get_logged_inputs()            
-            module["sim_module"].compute_encodings(pass_calibration_data, forward_pass_callback_args=dataloader)
-            input_shape = module["input_size"]
-            dummy_input = torch.randn(input_shape).float().cpu()# .half()
-            
-            # module["sim_module"].export(path='encodings/', filename_prefix=module['attr_name'], dummy_input=dummy_input)            
-            os.makedirs(self.aimet_cfg["encodings_path"], exist_ok=True)
-            module["sim_module"].save_encodings_to_json(path=self.aimet_cfg["encodings_path"], filename_prefix=f"{module['attr_name']}")
-        
+    def aimet_quantize(self):
+        print()
         # self.img_encoder = Encoder(3)
         # self.img_decoder = Decoder(3)
         # self.img_hyperprior = Hyperprior()
