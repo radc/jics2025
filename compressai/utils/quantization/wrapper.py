@@ -36,7 +36,7 @@ class InputLoggerWrapper(nn.Module):
         
     
     def append_input(self, input):
-        print("append")
+        # print("append")
         if len(self.inputs) == 5000 :
             print("Reached 5000 inputs!")
 

@@ -48,7 +48,7 @@ from ..utils import conv, deconv, gaussian_blur, gaussian_kernel2d, meshgrid2d
 from aimet_common.defs import QuantScheme
 from aimet_common.quantsim_config.utils import get_path_for_per_channel_config, get_path_for_per_tensor_config
 from aimet_torch.quantsim import QuantizationSimModel
-from ...utils.quantization.wrapper import InputLoggerWrapper
+from ...utils.quantization.wrapper import InputLoggerWrapper, SIMWrapper
 import os
 
 @register_model("ssf2020")
@@ -159,7 +159,7 @@ class ScaleSpaceFlow(CompressionModel):
                 )
                 self.gaussian_conditional = GaussianConditional(None)
 
-            def forward(self, y):
+            def forward(self, y):                
                 z = self.hyper_encoder(y)
 
                 z_hat, z_likelihoods = self.entropy_bottleneck(z)
@@ -564,8 +564,8 @@ class ScaleSpaceFlow(CompressionModel):
             sim = QuantizationSimModel(m,
                                     dummy_input=dummy_input,
                                     quant_scheme=QuantScheme.post_training_tf_enhanced,
-                                    default_param_bw=16,
-                                    default_output_bw=16,
+                                    default_param_bw=self.aimet_cfg["weight_bw"],
+                                    default_output_bw=self.aimet_cfg["activation_bw"],
                                     config_file=get_path_for_per_channel_config(),
                                     )
 
@@ -583,7 +583,15 @@ class ScaleSpaceFlow(CompressionModel):
                     hypermodule = self.res_hyperprior
                 else:                
                     hypermodule = self.motion_hyperprior
-                hypermodule.__setattr__(module["attr_name"], module["wrapper_module"])
+
+                if ("encoder" in module["attr_name"]):
+                    name = "hyper_encoder"
+                elif ("mean" in module["attr_name"]):
+                    name = "hyper_decoder_mean"
+                else:
+                    name = "hyper_decoder_scales"
+
+                hypermodule.__setattr__(name, module["wrapper_module"])
             else:
                 self.__setattr__(module["attr_name"], module["wrapper_module"])
             
@@ -612,14 +620,26 @@ class ScaleSpaceFlow(CompressionModel):
             os.makedirs(self.aimet_cfg["encodings_path"], exist_ok=True)
             module["sim_module"].save_encodings_to_json(path=self.aimet_cfg["encodings_path"], filename_prefix=f"{module['attr_name']}")
         
-        # self.img_encoder = Encoder(3)
-        # self.img_decoder = Decoder(3)
-        # self.img_hyperprior = Hyperprior()
+        
+        
+    def aimet_load_encodings(self):
+        for module in self.ptq_modules:
+            m = module["module"]
+            input_shape = module["input_size"]
+            dummy_input = torch.randn(input_shape).float().cuda()  # .half()                        
+            
+            sim = QuantizationSimModel(m,
+                                    dummy_input=dummy_input,
+                                    quant_scheme=QuantScheme.post_training_tf_enhanced,
+                                    default_param_bw=self.aimet_cfg["weight_bw"],
+                                    default_output_bw=self.aimet_cfg["activation_bw"],
+                                    config_file=get_path_for_per_channel_config(),
+                                    )
+            
 
-        # self.res_encoder = Encoder(3)
-        # self.res_decoder = Decoder(3, in_planes=384)
-        # self.res_hyperprior = Hyperprior()
+            filename = module['attr_name'] + ".json"
+            path = os.path.join(self.aimet_cfg["encodings_path"], filename)
 
-        # self.motion_encoder = Encoder(2 * 3)
-        # self.motion_decoder = Decoder(2 + 1)
-        # self.motion_hyperprior = Hyperprior()
+            sim.load_encodings(path)            
+            module["sim_module"] = sim
+            self.__setattr__(module["attr_name"], SIMWrapper(sim))   

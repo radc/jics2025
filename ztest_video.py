@@ -137,6 +137,8 @@ def parse_args(argv):
     parser.add_argument('--cuda', action='store_true', help='Enable CUDA acceleration')
 
     parser.add_argument('--aimet-calibrate', action='store_true', default=False, help='Calibrates the model')
+    parser.add_argument('--aimet-load-encodings', action='store_true', default=False, help='Load the model encodings')
+
     parser.add_argument('--aimet-path-encodings', type=str, default=None, help='Path to save/load aimet encodings')
     parser.add_argument('--aimet-activation-bw', type=int, required=False, default=32)
     parser.add_argument('--aimet-weight-bw', type=int, required=False, default=32)
@@ -155,11 +157,17 @@ def main(argv):
         transforms.ToTensor(),
         transforms.CenterCrop(args.patch_size)
     ])
+
+    if (args.aimet_calibrate) :
+        split = 'calibrate'
+    else: 
+        split = 'test'
+
     test_dataset = VideoFolder(
         args.dataset,
         rnd_interval=False,
         rnd_temp_order=False,
-        split='test',
+        split=split,
         transform=transform_test
     )
     test_loader = DataLoader(
@@ -182,17 +190,20 @@ def main(argv):
 
     criterion = RateDistortionLoss(lmbda=lmbda, return_details=True)
 
-    if(args.aimet_calibrate):
+    if(args.aimet_load_encodings):
+        net.aimet_set_cfg(encodings_path=args.aimet_path_encodings, weight_bw=args.aimet_weight_bw, activation_bw=args.aimet_activation_bw)        
+        net.aimet_set_modules(args.aimet_single_module_calibrate)        
+        net.aimet_load_encodings()
+    
+    
+    if(args.aimet_calibrate):       
         net.aimet_set_cfg(encodings_path=args.aimet_path_encodings, weight_bw=args.aimet_weight_bw, activation_bw=args.aimet_activation_bw)        
         net.aimet_set_modules(args.aimet_single_module_calibrate)        
 
         net.aimet_quantsim()
         net.aimet_insert_wrappers()
-    
-    print(net) #to delete this print
 
     print('=== Running test only ===')  
-
     
     test_epoch(0, test_loader, net, criterion)
 
