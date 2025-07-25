@@ -518,27 +518,25 @@ class ScaleSpaceFlow(CompressionModel):
             elif quant_scheme == "post_training_percentile" : quant_scheme_ = QuantScheme.post_training_percentile
             else : assert(False, "Invalid Quantization Scheme")
             self.aimet_cfg["quant_scheme"] = quant_scheme_
-
-        
     
     def aimet_set_modules(self, ptq_one_module=None):
         ptq_modules = []
         aux = [
-            {"module": self.img_encoder, "attr_name": "img_encoder", "input_size": (1, 3, 256, 256)},
+            #{"module": self.img_encoder, "attr_name": "img_encoder", "input_size": (1, 3, 256, 256)},
             {"module": self.img_decoder, "attr_name": "img_decoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.img_hyperprior.hyper_encoder, "attr_name": "img_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
+            #{"module": self.img_hyperprior.hyper_encoder, "attr_name": "img_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
             {"module": self.img_hyperprior.hyper_decoder_mean, "attr_name": "img_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
             {"module": self.img_hyperprior.hyper_decoder_scale, "attr_name": "img_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},
 
-            {"module": self.res_encoder, "attr_name": "res_encoder", "input_size": (1, 3, 256, 256)},
+            #{"module": self.res_encoder, "attr_name": "res_encoder", "input_size": (1, 3, 256, 256)},
             {"module": self.res_decoder, "attr_name": "res_decoder", "input_size": (1, 384, 16, 16)},
-            {"module": self.res_hyperprior.hyper_encoder, "attr_name": "res_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
+            #{"module": self.res_hyperprior.hyper_encoder, "attr_name": "res_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
             {"module": self.res_hyperprior.hyper_decoder_mean, "attr_name": "res_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
             {"module": self.res_hyperprior.hyper_decoder_scale, "attr_name": "res_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},
 
-            {"module": self.motion_encoder, "attr_name": "motion_encoder", "input_size": (1, 6, 256, 256)},
+            #{"module": self.motion_encoder, "attr_name": "motion_encoder", "input_size": (1, 6, 256, 256)},
             {"module": self.motion_decoder, "attr_name": "motion_decoder", "input_size": (1, 192, 16, 16)},
-            {"module": self.motion_hyperprior.hyper_encoder, "attr_name": "motion_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
+            #{"module": self.motion_hyperprior.hyper_encoder, "attr_name": "motion_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
             {"module": self.motion_hyperprior.hyper_decoder_mean, "attr_name": "motion_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
             {"module": self.motion_hyperprior.hyper_decoder_scale, "attr_name": "motion_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},                        
         ]
