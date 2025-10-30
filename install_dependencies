@@ -1,0 +1,17 @@
+# #Creating Conda
+# conda create -n jics python=3.10
+
+# #Activating Conda
+# conda activate jics
+
+#Installing Torch
+pip3 install torch torchvision torchaudio
+
+#Installing Aimet
+python3 -m pip install https://github.com/quic/aimet/releases/download/2.7.0/aimet_torch-2.7.0+cu121-py38-none-any.whl -f https://download.pytorch.org/whl/torch_stable.html
+
+#Installing CompressAI
+pip install -U pip && pip install -e .
+
+pip install ipywidgets
+

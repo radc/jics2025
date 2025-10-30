@@ -188,7 +188,7 @@ def main(argv):
         net.load_state_dict(checkpoint['state_dict'])
         lmbda = checkpoint.get('loss_lambda', 1e-2)
     else:
-        print('Warning: no checkpoint provided, using pretrained weights only.')
+        #print('Warning: no checkpoint provided, using pretrained weights only.')
         lmbda = 1e-2
 
     criterion = RateDistortionLoss(lmbda=lmbda, return_details=True)

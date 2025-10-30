@@ -1,14 +1,11 @@
 import re
 import os
+from zzzzproperties import *
 import matplotlib.pyplot as plt
+from matplotlib import cycler
 from collections import defaultdict
 import numpy as np
-from scipy import interpolate
-
-logFiles = {
-    "HEVC-B": "NEW_HEVC-B_32",
-    "UVG": "NEW_UVG_32"
-}
+import bjontegaard as bd
 
 headerPattern = re.compile(r"\[OK\] (HEVC-B|UVG) (\w+|anchor) (\d+):")
 metricPattern = re.compile(r"PSNR: (-?[\d.]+) dB, BPP: ([\d.]+)")
@@ -39,27 +36,26 @@ for dataset, filepath in logFiles.items():
             psnr, bpp = map(float, metricMatch.groups())
             data[dataset][currentConfig][currentQuality].append((psnr, bpp))
 
-# --- Helper function to average values ---
 def average(vals):
     return sum(vals) / len(vals) if vals else 0
 
-# --- Prepare data for plotting (mean per quality) ---
 def prepareRdData(datasetData):
     rdData = {}
     for config, qualDict in datasetData.items():
         psnrList = []
         bppList = []
-        for q in qualDict.keys():
+        for q in sorted(qualDict.keys()):
             values = qualDict[q]
             if values:
                 avgPsnr = average([v[0] for v in values])
                 avgBpp = average([v[1] for v in values])
                 psnrList.append(avgPsnr)
                 bppList.append(avgBpp)
+                
         rdData[config] = (np.array(bppList), np.array(psnrList))
+
     return rdData
 
-# --- BD-Rate calculation from https://tech.almalinux.org/bdrate.py ---
 def bdRate(rdRef, rdTest):
     xRef, yRef = rdRef
     xTest, yTest = rdTest
@@ -70,35 +66,21 @@ def bdRate(rdRef, rdTest):
     xTest, uniqueIndicesTest = np.unique(xTest, return_index=True)
     yTest = yTest[uniqueIndicesTest]
 
-    logXRef = np.log(xRef)
-    logXTest = np.log(xTest)
-
-    if len(logXRef) < 3 or len(logXTest) < 3:
+    try:
+        bdRateValue = bd.bd_rate(xRef, yRef, xTest, yTest, method='akima', min_overlap=0.3)
+        bdPsnrValue = bd.bd_psnr(xRef, yRef, xTest, yTest, method='akima', min_overlap=0.3)
+        
+        return bdRateValue, bdPsnrValue
+    
+    except Exception:
         return None
 
-    pRef = interpolate.PchipInterpolator(logXRef, yRef)
-    pTest = interpolate.PchipInterpolator(logXTest, yTest)
-
-    low = max(logXRef.min(), logXTest.min())
-    high = min(logXRef.max(), logXTest.max())
-
-    if low >= high:
-        return None
-
-    intRef = pRef.integrate(low, high)
-    intTest = pTest.integrate(low, high)
-    avgDiff = (intTest - intRef) / (high - low)
-
-    bdRatePercent = (np.exp(avgDiff) - 1) * 100
-    return bdRatePercent
-
-
-# --- Plot RD curves ---
-def plotRdCurves(title, rdData, filename):
+def plotRdCurves(title, rdData, filename, reference="anchor"):
     plt.figure(figsize=(12,7))
     allBpps = []
     allPsnrs = []
-    for config, (bpps, psnrs) in sorted(rdData.items()):
+
+    for config, (bpps, psnrs) in sorted(rdData.items(), key=lambda x: comboSortKey(x[0])):
         if len(bpps) >= 3:
             plt.plot(bpps, psnrs, marker='o', label=config, markersize=5)
             allBpps.extend(bpps)
@@ -116,9 +98,27 @@ def plotRdCurves(title, rdData, filename):
     plt.xlabel("Average BPP")
     plt.ylabel("Average PSNR (dB)")
     plt.grid(True)
-    plt.legend(ncol=2, fontsize='small')
-    plt.tight_layout()
+    plt.legend(loc='upper left', bbox_to_anchor=(0, 1), ncol=2, fontsize='small', frameon=True)
 
+
+    refData = rdData.get(reference)
+    if refData is not None:
+        rows = []
+        for config in sorted(rdData.keys(), key=comboSortKey):
+            if config == reference:
+                continue
+            bdResult = bdRate(refData, rdData[config])
+            if bdResult is not None:
+                bdRateValue, _ = bdResult
+                rows.append([config, f"{bdRateValue:+.4f} %"])
+
+        if rows:
+            colLabels = ["Config", "BD-Rate (%)"]
+            plt.table(cellText=rows, colLabels=colLabels, cellLoc='left', colLoc='center',
+                      loc='lower right', bbox=[0.76, 0.04, 0.22, 0.35],
+                      edges='closed')
+
+    plt.tight_layout()
     os.makedirs("plots", exist_ok=True)
     plt.savefig(f"plots/{filename}")
     plt.close()
@@ -126,46 +126,51 @@ def plotRdCurves(title, rdData, filename):
 def comboSortKey(combo):
     if combo == "anchor":
         return (-1, -1)
-    parts = combo.split("_")
-    aNum = int(parts[0][1:])
-    wNum = int(parts[1][1:])
-    return (aNum, wNum)
+    m = re.match(r'a(\d+)_w(\d+)', combo)
+    if m:
+        return (int(m.group(1)), int(m.group(2)))
+    else:
+        return (float('inf'), float('inf'))
 
-# --- Calculate and print BD-rate table ---
 def printBdRateTable(rdData, reference="anchor", datasetName="Dataset"):
     print(f"\nBD-Rate comparison to reference: {reference} - {datasetName}")
-    print(f"{'Config':<15} | {'BD-Rate (%)':>10}")
+    print(f"{'Config':<10} | {'BD-Rate (%)':>10}")
     print("-" * 28)
     refData = rdData.get(reference)
     if refData is None:
         print("Reference config not found.")
         return
 
-    combos = list(rdData.keys())
-    if "a8_w8" in combos:
-        combos.remove("a8_w8")
-        combos = ["a8_w8"] + sorted(combos, key=comboSortKey)
-    else:
-        combos = sorted(combos, key=comboSortKey)
+    combos = sorted(rdData.keys(), key=comboSortKey)
 
     for config in combos:
         if config == reference:
             continue
         bd = bdRate(refData, rdData[config])
         if bd is None:
-            print(f"{config:<15} | {'N/A':>10}")
+            print(f"{config:<10} | {'N/A':>10}")
         else:
-            print(f"{config:<15} | {bd:10.4f}")
+            bdRateValue, _ = bd
+            print(f"{config:<10} | {bdRateValue:10.4f}")
 
+def findMostQuantized(rdData):
+    minBppAvg = float("inf")
+    worstConfig = None
+    for config, (bpps, _) in rdData.items():
+        if len(bpps) >= 3:
+            avgBpp = np.mean(bpps)
+            if avgBpp < minBppAvg:
+                minBppAvg = avgBpp
+                worstConfig = config
+    return worstConfig
 
 if __name__ == "__main__":
-    # Prepare RD data per dataset
     for dataset in data:
         rdCurves = prepareRdData(data[dataset])
-        plotRdCurves(dataset, rdCurves, f"{dataset}.png")
-        printBdRateTable(rdCurves, reference="anchor", datasetName=dataset)
+        ref = findMostQuantized(rdCurves)
+        plotRdCurves(dataset, rdCurves, f"{dataset}.png", reference=ref)
+        printBdRateTable(rdCurves, reference=ref, datasetName=dataset)
 
-    # Prepare general RD data (merged)
     mergedData = defaultdict(lambda: defaultdict(list))
     for datasetData in data.values():
         for config, qDict in datasetData.items():
@@ -173,5 +178,6 @@ if __name__ == "__main__":
                 mergedData[config][q].extend(vals)
 
     mergedRdCurves = prepareRdData(mergedData)
-    plotRdCurves("Overall", mergedRdCurves, "Overall.png")
-    printBdRateTable(mergedRdCurves, reference="anchor", datasetName="Overall")
+    autoReference = findMostQuantized(mergedRdCurves)
+    plotRdCurves("Overall", mergedRdCurves, "Overall.png", reference=autoReference)
+    printBdRateTable(mergedRdCurves, reference=autoReference, datasetName="Overall")

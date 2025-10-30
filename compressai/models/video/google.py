@@ -51,6 +51,8 @@ from aimet_torch.quantsim import QuantizationSimModel
 from ...utils.quantization.wrapper import InputLoggerWrapper, SIMWrapper
 import os
 
+from thop import profile
+
 @register_model("ssf2020")
 class ScaleSpaceFlow(CompressionModel):
     r"""Google's first end-to-end optimized video compression from E.
@@ -490,7 +492,6 @@ class ScaleSpaceFlow(CompressionModel):
         net.load_state_dict(state_dict)
         return net
     
-    
     def aimet_set_cfg(self, encodings_path=None, weight_bw=None, activation_bw=None, quant_scheme=None):
         
         self.__setattr__("aimet_cfg", {
@@ -523,19 +524,19 @@ class ScaleSpaceFlow(CompressionModel):
         ptq_modules = []
         aux = [
             #{"module": self.img_encoder, "attr_name": "img_encoder", "input_size": (1, 3, 256, 256)},
-            {"module": self.img_decoder, "attr_name": "img_decoder", "input_size": (1, 192, 16, 16)},
+            #{"module": self.img_decoder, "attr_name": "img_decoder", "input_size": (1, 192, 16, 16)},
             #{"module": self.img_hyperprior.hyper_encoder, "attr_name": "img_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
             {"module": self.img_hyperprior.hyper_decoder_mean, "attr_name": "img_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
             {"module": self.img_hyperprior.hyper_decoder_scale, "attr_name": "img_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},
 
             #{"module": self.res_encoder, "attr_name": "res_encoder", "input_size": (1, 3, 256, 256)},
-            {"module": self.res_decoder, "attr_name": "res_decoder", "input_size": (1, 384, 16, 16)},
+            #{"module": self.res_decoder, "attr_name": "res_decoder", "input_size": (1, 384, 16, 16)},
             #{"module": self.res_hyperprior.hyper_encoder, "attr_name": "res_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
             {"module": self.res_hyperprior.hyper_decoder_mean, "attr_name": "res_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
             {"module": self.res_hyperprior.hyper_decoder_scale, "attr_name": "res_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},
 
             #{"module": self.motion_encoder, "attr_name": "motion_encoder", "input_size": (1, 6, 256, 256)},
-            {"module": self.motion_decoder, "attr_name": "motion_decoder", "input_size": (1, 192, 16, 16)},
+            #{"module": self.motion_decoder, "attr_name": "motion_decoder", "input_size": (1, 192, 16, 16)},
             #{"module": self.motion_hyperprior.hyper_encoder, "attr_name": "motion_hyperprior_encoder", "input_size": (1, 192, 16, 16)},
             {"module": self.motion_hyperprior.hyper_decoder_mean, "attr_name": "motion_hyperprior_decoder_mean", "input_size": (1, 192, 2, 2)},
             {"module": self.motion_hyperprior.hyper_decoder_scale, "attr_name": "motion_hyperprior_decoder_scale", "input_size": (1, 192, 2, 2)},                        
@@ -543,7 +544,8 @@ class ScaleSpaceFlow(CompressionModel):
 
         if ptq_one_module == None :      
             ptq_modules = aux
-        else :
+
+        else:
             for module in aux :
                 if module["attr_name"] == ptq_one_module:
                     ptq_modules = [module]
@@ -587,7 +589,7 @@ class ScaleSpaceFlow(CompressionModel):
                 elif ("mean" in module["attr_name"]):
                     name = "hyper_decoder_mean"
                 else:
-                    name = "hyper_decoder_scales"
+                    name = "hyper_decoder_scale"
 
                 hypermodule.__setattr__(name, module["wrapper_module"])
             else:
@@ -636,8 +638,44 @@ class ScaleSpaceFlow(CompressionModel):
             
 
             filename = module['attr_name'] + ".json"
-            path = os.path.join(self.aimet_cfg["encodings_path"], filename)
+            path = os.path.join(self.aimet_cfg["encodings_path"], filename)                       
+            
+            sim.load_encodings(path)
 
-            sim.load_encodings(path)            
             module["sim_module"] = sim
-            self.__setattr__(module["attr_name"], SIMWrapper(sim))   
+            
+            if ("hyperprior" in module["attr_name"] ):
+                if("img" in module["attr_name"]):                
+                    hypermodule = self.img_hyperprior                
+                elif("res" in module["attr_name"]):                
+                    hypermodule = self.res_hyperprior
+                else:                
+                    hypermodule = self.motion_hyperprior
+
+                if ("encoder" in module["attr_name"]):
+                    name = "hyper_encoder"
+                elif ("mean" in module["attr_name"]):
+                    name = "hyper_decoder_mean"
+                else:
+                    name = "hyper_decoder_scale"
+
+                hypermodule.__setattr__(name, SIMWrapper(sim))                
+            else:
+                self.__setattr__(module["attr_name"], SIMWrapper(sim))
+
+
+            # self.__setattr__(module["attr_name"], SIMWrapper(sim))   
+    
+    def calc_macs(self):
+        for module in self.ptq_modules:
+            m = module["module"]
+            # input_shape = module["input_size"]                        
+            WIDTH = 1920 // 128 #15
+            HEIGHT = 1024 // 128 #8
+            input_shape = (1, 192, HEIGHT, WIDTH)
+
+            input = torch.randn(input_shape)
+
+
+            macs, params = profile(m, inputs=(input,))
+            print(f"{module['attr_name']} Total MACs: {macs:,}, Params: {params:,}")

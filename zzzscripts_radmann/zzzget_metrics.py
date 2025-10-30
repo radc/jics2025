@@ -4,13 +4,9 @@ import subprocess
 import pandas as pd
 from collections import defaultdict
 from itertools import product
+from zzzzproperties import *
 
-frames = 32
-
-activationBits = [8, 16, 24, 32]
-weightBits = [8, 16, 24, 32]
-combos = ["anchor"] + [f"a{a}_w{w}" for a in activationBits for w in weightBits]
-folders = ["HEVC-B", "UVG"]
+combos = ["anchor"] + [f"a{a}_w{w}" for a in bits for w in bits]
 
 qualities = list(range(1, 10))
 saveDir = "sheets"
@@ -110,7 +106,7 @@ def processAll():
             else:
                 print(f"[SKIP] {folder} anchor quality {quality}. Done")
 
-            for a, w in product(activationBits, weightBits):
+            for a, w in product(bits, bits):
                 combo = f"a{a}_w{w}"
                 if (combo, quality) in completed:
                     print(f"[SKIP] {folder} {combo} quality {quality}. Done")

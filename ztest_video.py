@@ -176,6 +176,11 @@ def parse_args(argv):
                         type=int,
                         default=5,
                         help="Number of frames per sequence")
+    parser.add_argument("--split-list",
+                        type=str,
+                        default=None,
+                        help="File of sequences to calibrate"
+    )
     parser.add_argument("--aimet-calibrate",
                         action="store_true",
                         default=False,
@@ -216,6 +221,10 @@ def parse_args(argv):
         action="store_true",
         help="Use custom sequences instead of Vimeo setuplet"
     )
+    parser.add_argument("--calculate-macs",
+                        action="store_true",
+                        default=False,
+                        help="Print the MACs count of each module")
 
     return parser.parse_args(argv)
 
@@ -228,7 +237,12 @@ def main(argv):
         transforms.ToTensor(),
         transforms.CenterCrop(args.patch_size),
     ])
-    split = "calibrate" if args.aimet_calibrate else "test"
+
+    if(args.split_list == None):
+        split = "calibrate" if args.aimet_calibrate else "test"
+    else:
+        split = args.split_list
+
     test_dataset = VideoFolder(
         args.dataset,
         rnd_interval=False,
@@ -257,6 +271,8 @@ def main(argv):
 
     criterion = RateDistortionLoss(lmbda=lmbda, return_details=True)
 
+    
+    
     if args.aimet_load_encodings:
         net.aimet_set_cfg(encodings_path=args.aimet_path_encodings,
                           weight_bw=args.aimet_weight_bw,
@@ -271,6 +287,11 @@ def main(argv):
         net.aimet_set_modules(args.aimet_single_module_calibrate)
         net.aimet_quantsim()
         net.aimet_insert_wrappers()
+
+    if args.calculate_macs :
+        net.aimet_set_modules(args.aimet_single_module_calibrate)
+        net.calc_macs()
+        return
 
     print("=== Running test only ===")
     test_epoch(0, test_loader, net, criterion)
